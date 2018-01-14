@@ -1,6 +1,7 @@
 # Support Resistance Indicator for MT 4
 
 v1.01
+  - added option to only show the 2 S&R levels which are just above & below the current price
   - added S&R for H1 (press 'i' to turn on/off)
 
 v1.00

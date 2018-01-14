@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2017, Erwin Beckers"
 #property link      "https://www.erwinbeckers.nl"
-#property version   "1.00"
+#property version   "1.01"
 #property strict
 #property indicator_chart_window
 
@@ -13,10 +13,11 @@
 
 extern bool        SR_1Hours       = false;
 extern bool        SR_4Hours       = false;
-extern bool        SR_Daily        = true;
+extern bool        SR_Daily        = false;
 extern bool        SR_Weekly       = true;
 extern bool        ShowAgeLabels   = true;
 extern bool        ShowLastTouch   = false; 
+extern bool        ShowAllSRLines  = false; 
 extern string      __colors__      = "---- S/R settings ----";
 extern color       ColorAge1       = Silver;
 extern color       ColorAge2       = clrDarkGray;
@@ -50,28 +51,28 @@ void CalculateSR(bool forceRefresh = false)
    {
       txt +="W1,";
       _supportResistanceW1.Calculate(forceRefresh);
-      _supportResistanceW1.Draw("W1", ColorText, Colors, ShowAgeLabels, ShowLastTouch);
+      _supportResistanceW1.Draw("W1", ColorText, Colors, ShowAgeLabels, ShowLastTouch, ShowAllSRLines);
    }
    
    if (SR_Daily) 
    {
       txt +="D1,";
       _supportResistanceD1.Calculate(forceRefresh);
-      _supportResistanceD1.Draw("D1", ColorText, Colors, ShowAgeLabels, ShowLastTouch);
+      _supportResistanceD1.Draw("D1", ColorText, Colors, ShowAgeLabels, ShowLastTouch, ShowAllSRLines);
    }
    
    if (SR_4Hours)
    {
       txt +="H4,";
       _supportResistanceH4.Calculate(forceRefresh);
-      _supportResistanceH4.Draw("H4", ColorText, Colors, ShowAgeLabels, ShowLastTouch);
+      _supportResistanceH4.Draw("H4", ColorText, Colors, ShowAgeLabels, ShowLastTouch, ShowAllSRLines);
    }
    
    if (SR_1Hours)
    {
       txt +="H1,";
       _supportResistanceH1.Calculate(forceRefresh);
-      _supportResistanceH1.Draw("H1", ColorText, Colors, ShowAgeLabels, ShowLastTouch);
+      _supportResistanceH1.Draw("H1", ColorText, Colors, ShowAgeLabels, ShowLastTouch, ShowAllSRLines);
    }
    
    switch (SR_Detail)
@@ -184,6 +185,13 @@ void OnChartEvent(const int id,          // Event ID
             ClearAll();
             SR_Weekly = !SR_Weekly;
             Print("Weekly :", SR_Weekly ? "on":"off");
+            CalculateSR();
+         break;
+         
+         case 65://a
+            ClearAll();
+            ShowAllSRLines = !ShowAllSRLines;
+            Print("ShowAllSRLines :", ShowAllSRLines ? "on":"off");
             CalculateSR();
          break;
          
