@@ -73,7 +73,7 @@ public:
    //+------------------------------------------------------------------+
    ~CSupportResistance()
    {
-      for (int i=0; i < _maxLine;++i)
+      for (int i=0; i < _maxLine; ++i)
       {
          delete _lines[i];
       }
@@ -82,15 +82,40 @@ public:
    
 private:
    //+------------------------------------------------------------------+
-   bool DoesSRLevelExists(double price, double pips )
+   bool DoesSupportLevelExists(double price, double priceRange, double& srLevelFound, bool checkAbove)
    { 
       if (_maxLine <= 0) return false;
+      
       for (int i=0; i < _maxLine;++i)
       {
-         double diff = MathAbs(price - _lines[i].Price);
-         if (diff <= pips) 
+         if (!checkAbove || price >= _lines[i].Price)
          {
-            return true;
+            double diff = MathAbs(price - _lines[i].Price);
+            if (diff <= priceRange) 
+            {
+               srLevelFound = _lines[i].Price;
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+   
+   //+------------------------------------------------------------------+
+   bool DoesResistanceLevelExists(double price, double priceRange, double& srLevelFound, bool checkBelow)
+   { 
+      if (_maxLine <= 0) return false;
+      
+      for (int i=0; i < _maxLine;++i)
+      {
+         if (!checkBelow || price <= _lines[i].Price)
+         {
+            double diff = MathAbs(price - _lines[i].Price);
+            if (diff <= priceRange) 
+            {
+               srLevelFound = _lines[i].Price;
+               return true;
+            }
          }
       }
       return false;
@@ -104,6 +129,7 @@ private:
       double totalCnt   = 1.0; 
       double lowest     = price;
       double highest    = price; 
+      double points       = MarketInfo(_symbol, MODE_POINT);
       
       for (int bar = barPrice + 1; bar < maxBars; bar++)
       {  
@@ -123,7 +149,7 @@ private:
             totalPrice += lo;
             totalCnt   += 1.0;
             lowest      = MathMin(lowest,lo);
-            double pips = diffLo / (10.0 * Point());
+            double pips = diffLo / (10.0 * points);
             //if (logEnable) Print("price:",price," bar:",bar, " low:",lo, " date:", startTime, " pips:",pips);
          }
          else if ( diffHi <= _maxDistance) 
@@ -134,7 +160,7 @@ private:
             totalPrice += hi;
             totalCnt   += 1.0;
             highest    = MathMax(highest,hi);
-            double pips=diffHi / (10.0 * Point());
+            double pips=diffHi / (10.0 * points);
             //if (logEnable) Print("price:",price," bar:",bar, " hi:",hi,"  date:",startTime, " pips:",pips);
          }
       }
@@ -179,11 +205,13 @@ private:
       int highestBar      = iHighest(_symbol, _period, MODE_HIGH, bars, 0);
       double highestPrice = iHigh(_symbol, _period, highestBar);
       double lowestPrice  = iLow(_symbol , _period, lowestBar);
+      double digits       = MarketInfo(_symbol, MODE_DIGITS);
+      double points       = MarketInfo(_symbol, MODE_POINT);
       
       double priceRange = highestPrice - lowestPrice;
      
-      double mult   = (Digits==3 || Digits==5) ? 10.0 : 1.0;
-      mult *= Point();
+      double mult   = (digits==3 || digits==5) ? 10.0 : 1.0;
+      mult *= points;
        
       double div = 30.0;
       switch (SR_Detail)
@@ -469,6 +497,10 @@ public:
       int day = TimeDayOfYear(TimeCurrent());
       if (day != _previousDay || forceRefresh) 
       {
+         for (int i=0; i < _maxLine; ++i)
+         {
+            delete _lines[i];
+         }
          _previousDay = day;
          _maxLine = 0;
          _maxDistance = 0;
@@ -483,16 +515,52 @@ public:
    }
    
    //+------------------------------------------------------------------+
-   bool IsAtSupportResistance(double price, double pips)
+   bool IsAtSupport(double price, double pips, double& srLevelFound, bool checkAbove=true)
    {
       Calculate();
       double points   = MarketInfo(_symbol, MODE_POINT);
       double digits   = MarketInfo(_symbol, MODE_DIGITS);
       double mult     = (digits==3 || digits==5) ? 10.0:1;
-      pips = pips * mult * points;
-      
-      if (DoesSRLevelExists(price, pips)) return true;
+      double priceRange = pips * mult * points;
+      if (DoesSupportLevelExists(price, priceRange, srLevelFound, checkAbove)) return true;
       return false;
    }
    
+   //+------------------------------------------------------------------+
+   bool IsAtResistance(double price, double pips, double& srLevelFound, bool checkBelow=true)
+   {
+      Calculate();
+      double points   = MarketInfo(_symbol, MODE_POINT);
+      double digits   = MarketInfo(_symbol, MODE_DIGITS);
+      double mult     = (digits==3 || digits==5) ? 10.0:1;
+      double priceRange = pips * mult * points;
+      
+      if (DoesResistanceLevelExists(price, priceRange, srLevelFound,checkBelow)) return true;
+      return false;
+   }
+   
+   
+   //+------------------------------------------------------------------+
+   bool GetSupportResistance(double price, double &supportLevel, double &resistanceLevel)
+   {
+      supportLevel    = 0;
+      resistanceLevel = 0;
+      
+      Calculate();
+      if (_maxLine <= 0) return false;
+      
+      for (int i=0; i < _maxLine;++i)
+      {
+         if ( price > _lines[i].Price)
+         {
+            supportLevel = _lines[i].Price;
+         }
+         else if (price < _lines[i].Price)
+         {
+            resistanceLevel = _lines[i].Price;
+            return true;
+         }
+      }
+      return false;
+   }
 };
