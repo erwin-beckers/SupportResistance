@@ -7,21 +7,37 @@
 #property link      "https://www.erwinbeckers.nl"
 #property strict
 
+
 enum Details 
 {
-   Minium,
+   Minimum,
    MediumLow,
    Medium,
    MediumHigh,
    Maximum
 };
 
+
+#ifdef __MQL4__
+
 extern string      __srSettings__  = "---- S/R settings ----";
 extern int         BarsHistory     = 3000;
 extern Details     SR_Detail       = Medium;
 
-#include <CZigZag.mqh>
-#include <CSelectionSort.mqh>
+#else
+
+input  string      __srSettings__  = "---- S/R settings ----";             // SUPPORT & RESISTANCE SETTINGS
+input  int         BarsHistory     = 3000;                                 // Bars History
+input  Details     i_SR_Detail     = Medium;                               // S&R Detail Level
+
+Details            SR_Detail       = i_SR_Detail;
+
+#endif
+
+
+#include "CZigZag.mqh"
+#include "CSelectionSort.mqh"
+
 
 //+------------------------------------------------------------------+
 class SRLine
@@ -48,6 +64,28 @@ public:
    }
 };
 
+#ifdef __MQL5__
+
+#define DoubleToStr                    DoubleToString
+#define TimeToStr                      TimeToString
+
+int TimeMonth(datetime date)
+{
+   MqlDateTime dt_struct;
+   TimeToStruct(date, dt_struct);
+   return dt_struct.mon;
+}
+
+int TimeDayOfYear(datetime date)
+{
+   MqlDateTime dt_struct;
+   TimeToStruct(date, dt_struct);
+   return dt_struct.day_of_year;
+}
+
+#endif
+
+
 //+------------------------------------------------------------------+
 class CSupportResistance
 {
@@ -56,12 +94,20 @@ private:
    int     _maxLine;
    double  _maxDistance;
    int     _previousDay;
+#ifdef __MQL4__
    int     _period;
+#else
+   ENUM_TIMEFRAMES _period;
+#endif
    SRLine* _lines[];
    
 public:
    //+------------------------------------------------------------------+
+#ifdef __MQL4__
    CSupportResistance(string symbol, int timeperiod)
+#else
+   CSupportResistance(string symbol, ENUM_TIMEFRAMES timeperiod)
+#endif
    {
       _period      = timeperiod;
       _symbol      = symbol;
@@ -129,7 +175,11 @@ private:
       double totalCnt   = 1.0; 
       double lowest     = price;
       double highest    = price; 
-      double points       = MarketInfo(_symbol, MODE_POINT);
+#ifdef __MQL4__
+      double points     = MarketInfo(_symbol, MODE_POINT);
+#else
+      double points     = SymbolInfoDouble(_symbol, SYMBOL_POINT);
+#endif
       
       for (int bar = barPrice + 1; bar < maxBars; bar++)
       {  
@@ -171,8 +221,7 @@ private:
       //if (diffHi > diffLo) price=diffHi;
       //else price=diffLo;
       
-      
-     //price = totalPrice / totalCnt;
+      //price = totalPrice / totalCnt;
       return cnt;
    }
    
@@ -205,8 +254,13 @@ private:
       int highestBar      = iHighest(_symbol, _period, MODE_HIGH, bars, 0);
       double highestPrice = iHigh(_symbol, _period, highestBar);
       double lowestPrice  = iLow(_symbol , _period, lowestBar);
+#ifdef __MQL4__
       double digits       = MarketInfo(_symbol, MODE_DIGITS);
       double points       = MarketInfo(_symbol, MODE_POINT);
+#else
+      double digits       = (double)SymbolInfoInteger(_symbol, SYMBOL_DIGITS);
+      double points       = SymbolInfoDouble(_symbol, SYMBOL_POINT);
+#endif
       
       double priceRange = highestPrice - lowestPrice;
      
@@ -216,7 +270,7 @@ private:
       double div = 30.0;
       switch (SR_Detail)
       {
-         case Minium:
+         case Minimum:
             div=10.0;
          break;
          case MediumLow:
@@ -347,42 +401,74 @@ private:
          
          double daysLastTouch = (double)(TimeCurrent() - line.EndDate) / (60*60*24);
          double days = (double) (TimeCurrent()  - line.StartDate) / (60*60*24);
-         int yrs     = MathFloor(days / 356.0);
+         int yrs     = (int)MathFloor(days / 356.0);
         
          if (yrs >= 1 )
          {
             int X = 0;
             int Y = 0;
             ChartTimePriceToXY(0,0,TimeCurrent(), line.Price, X, Y);
+#ifdef __MQL4__
             ObjectCreate(name, OBJ_LABEL, 0, 0, 0);
             ObjectSet(name, OBJPROP_CORNER, CORNER_RIGHT_UPPER);
             ObjectSet(name, OBJPROP_ANCHOR, ANCHOR_BOTTOM);
             ObjectSet(name, OBJPROP_XDISTANCE, xoff);
             ObjectSet(name, OBJPROP_YDISTANCE, Y-13);
             ObjectSet(name, OBJPROP_BACK, false);
+#else
+            ObjectCreate(ChartID(), name, OBJ_LABEL, 0, 0, 0);
+            ObjectSetInteger(ChartID(), name, OBJPROP_CORNER, CORNER_RIGHT_UPPER);
+            ObjectSetInteger(ChartID(), name, OBJPROP_ANCHOR, ANCHOR_BOTTOM);
+            ObjectSetInteger(ChartID(), name, OBJPROP_XDISTANCE, xoff);
+            ObjectSetInteger(ChartID(), name, OBJPROP_YDISTANCE, Y-13);
+            ObjectSetInteger(ChartID(), name, OBJPROP_BACK, false);
+#endif
             string txt= timeFrame+" "+ IntegerToString((int)yrs)+ " years old.";
             if (showLastTouch) txt=txt+" Last touch:"+IntegerToString( (int)daysLastTouch)+" days ago";
+#ifdef __MQL4__
             ObjectSetText(name, txt, 8, "Arial", colorText);
+#else
+            ObjectSetString(ChartID(), name, OBJPROP_TEXT, txt);
+            ObjectSetString(ChartID(), name, OBJPROP_FONT, "Arial");
+            ObjectSetInteger(ChartID(), name, OBJPROP_FONTSIZE, 8);
+            ObjectSetInteger(ChartID(), name, OBJPROP_COLOR, colorText);
+#endif
             lineCnt++;
          }
          else
          {
-            int months     = TimeMonth( TimeCurrent() ) - TimeMonth(line.StartDate);
+            int months = TimeMonth( TimeCurrent() ) - TimeMonth(line.StartDate);
             if (months < 0) months += 12;
             if (months > 1)
             {
                int X = 0;
                int Y = 0;
                ChartTimePriceToXY(0,0,TimeCurrent(),line.Price, X, Y);
+#ifdef __MQL4__
                ObjectCreate(name, OBJ_LABEL, 0, 0, 0);
                ObjectSet(name, OBJPROP_CORNER, CORNER_RIGHT_UPPER);
                ObjectSet(name, OBJPROP_ANCHOR, ANCHOR_BOTTOM);
                ObjectSet(name, OBJPROP_XDISTANCE, xoff);
                ObjectSet(name, OBJPROP_YDISTANCE, Y-13);
                ObjectSet(name, OBJPROP_BACK, false);
+#else
+               ObjectCreate(ChartID(), name, OBJ_LABEL, 0, 0, 0);
+               ObjectSetInteger(ChartID(), name, OBJPROP_CORNER, CORNER_RIGHT_UPPER);
+               ObjectSetInteger(ChartID(), name, OBJPROP_ANCHOR, ANCHOR_BOTTOM);
+               ObjectSetInteger(ChartID(), name, OBJPROP_XDISTANCE, xoff);
+               ObjectSetInteger(ChartID(), name, OBJPROP_YDISTANCE, Y-13);
+               ObjectSetInteger(ChartID(), name, OBJPROP_BACK, false);
+#endif
                string txt=timeFrame+" "+IntegerToString((int)months)+ " months old.";
                if (showLastTouch) txt=txt+" Last touch:"+IntegerToString((int)daysLastTouch)+" days ago";
+#ifdef __MQL4__
                ObjectSetText(name, txt, 8, "Arial", colorText);
+#else
+               ObjectSetString(ChartID(), name, OBJPROP_TEXT, txt);
+               ObjectSetString(ChartID(), name, OBJPROP_FONT, "Arial");
+               ObjectSetInteger(ChartID(), name, OBJPROP_FONTSIZE, 8);
+               ObjectSetInteger(ChartID(), name, OBJPROP_COLOR, colorText);
+#endif
                lineCnt++;
             }
             else
@@ -390,15 +476,31 @@ private:
                int X = 0;
                int Y = 0;
                ChartTimePriceToXY(0,0,TimeCurrent(),line.Price, X, Y);
+#ifdef __MQL4__
                ObjectCreate(name, OBJ_LABEL, 0, 0, 0);
                ObjectSet(name, OBJPROP_CORNER, CORNER_RIGHT_UPPER);
                ObjectSet(name, OBJPROP_ANCHOR, ANCHOR_BOTTOM);
                ObjectSet(name, OBJPROP_XDISTANCE, xoff);
                ObjectSet(name, OBJPROP_YDISTANCE, Y-13);
                ObjectSet(name, OBJPROP_BACK, false);
+#else
+               ObjectCreate(ChartID(), name, OBJ_LABEL, 0, 0, 0);
+               ObjectSetInteger(ChartID(), name, OBJPROP_CORNER, CORNER_RIGHT_UPPER);
+               ObjectSetInteger(ChartID(), name, OBJPROP_ANCHOR, ANCHOR_BOTTOM);
+               ObjectSetInteger(ChartID(), name, OBJPROP_XDISTANCE, xoff);
+               ObjectSetInteger(ChartID(), name, OBJPROP_YDISTANCE, Y-13);
+               ObjectSetInteger(ChartID(), name, OBJPROP_BACK, false);
+#endif
                string txt=timeFrame+" "+IntegerToString((int)days)+ " days old.";
                if (showLastTouch) txt=txt+" Last touch:"+IntegerToString((int)daysLastTouch)+" days ago";
+#ifdef __MQL4__
                ObjectSetText(name, txt, 8, "Arial", colorText);
+#else
+               ObjectSetString(ChartID(), name, OBJPROP_TEXT, txt);
+               ObjectSetString(ChartID(), name, OBJPROP_FONT, "Arial");
+               ObjectSetInteger(ChartID(), name, OBJPROP_FONTSIZE, 8);
+               ObjectSetInteger(ChartID(), name, OBJPROP_COLOR, colorText);
+#endif
                lineCnt++;
             }
          }
@@ -422,11 +524,19 @@ private:
       else if (percentage <= 0.75) clr = colors[2];
       else clr = colors[3];
       
+#ifdef __MQL4__
       ObjectCreate(0, name, OBJ_HLINE, 0, 0, line.Price);
       ObjectSet(name, OBJPROP_COLOR, clr);
       ObjectSet(name, OBJPROP_WIDTH, width);
       ObjectSet(name, OBJPROP_BACK, true);
       ObjectSet(name, OBJPROP_STYLE, STYLE_SOLID);
+#else
+      ObjectCreate(ChartID(), name, OBJ_HLINE, 0, 0, line.Price);
+      ObjectSetInteger(ChartID(), name, OBJPROP_COLOR, clr);
+      ObjectSetInteger(ChartID(), name, OBJPROP_WIDTH, width);
+      ObjectSetInteger(ChartID(), name, OBJPROP_BACK, true);
+      ObjectSetInteger(ChartID(), name, OBJPROP_STYLE, STYLE_SOLID);
+#endif
    }
    
     
@@ -449,7 +559,11 @@ public:
       
       if (!showAllSRLines)
       {
+#ifdef __MQL4__
          double marketPrice = MarketInfo(_symbol, MODE_BID); 
+#else
+         double marketPrice = SymbolInfoDouble(_symbol, SYMBOL_BID); 
+#endif
          for (int i=0; i < _maxLine; ++i)
          {
             if ( _lines[i].Price > marketPrice)
@@ -478,7 +592,11 @@ public:
       do 
       {
          deleted = false;
+#ifdef __MQL4__
          for (int i = 0; i < ObjectsTotal();++i)
+#else
+         for (int i = 0; i < ObjectsTotal(ChartID());++i)
+#endif
          {
             string name = ObjectName(0, i);
             if (name== "@info" || StringSubstr(name, 0, 1+StringLen(key)) == "@"+key)
@@ -518,8 +636,13 @@ public:
    bool IsAtSupport(double price, double pips, double& srLevelFound, bool checkAbove=true)
    {
       Calculate();
-      double points   = MarketInfo(_symbol, MODE_POINT);
+#ifdef __MQL4__
       double digits   = MarketInfo(_symbol, MODE_DIGITS);
+      double points   = MarketInfo(_symbol, MODE_POINT);
+#else
+      double digits   = (double)SymbolInfoInteger(_symbol, SYMBOL_DIGITS);
+      double points   = SymbolInfoDouble(_symbol, SYMBOL_POINT);
+#endif
       double mult     = (digits==3 || digits==5) ? 10.0:1;
       double priceRange = pips * mult * points;
       if (DoesSupportLevelExists(price, priceRange, srLevelFound, checkAbove)) return true;
@@ -530,12 +653,17 @@ public:
    bool IsAtResistance(double price, double pips, double& srLevelFound, bool checkBelow=true)
    {
       Calculate();
-      double points   = MarketInfo(_symbol, MODE_POINT);
+#ifdef __MQL4__
       double digits   = MarketInfo(_symbol, MODE_DIGITS);
+      double points   = MarketInfo(_symbol, MODE_POINT);
+#else
+      double digits   = (double)SymbolInfoInteger(_symbol, SYMBOL_DIGITS);
+      double points   = SymbolInfoDouble(_symbol, SYMBOL_POINT);
+#endif
       double mult     = (digits==3 || digits==5) ? 10.0:1;
       double priceRange = pips * mult * points;
       
-      if (DoesResistanceLevelExists(price, priceRange, srLevelFound,checkBelow)) return true;
+      if (DoesResistanceLevelExists(price, priceRange, srLevelFound, checkBelow)) return true;
       return false;
    }
    
@@ -554,6 +682,7 @@ public:
          if ( price > _lines[i].Price)
          {
             supportLevel = _lines[i].Price;
+            // return true;                  // TODO: missing line, is this a BUG?
          }
          else if (price < _lines[i].Price)
          {
