@@ -29,7 +29,11 @@ private:
    double            _zigZagBufferBuy[];
    double            _zigZagBufferSell[];
    int               _maxBars;
+#ifdef __MQL4__
    int               _period;
+#else
+   ENUM_TIMEFRAMES   _period;
+#endif
    
 public: 
    int               _extDepth;
@@ -37,7 +41,11 @@ public:
    int               _extBackstep;
    
    //--------------------------------------------------------------------
+#ifdef __MQL4__
    CZigZag(int maxBars = 500, int timePeriod = 0)
+#else
+   CZigZag(int maxBars = 500, ENUM_TIMEFRAMES timePeriod = 0)
+#endif
    {
       _extDepth     = ExtDepth;
       _extDeviation = ExtDeviation;
@@ -65,7 +73,11 @@ public:
       lastlow  = 0;
       lasthigh = 0;
    
+#ifdef __MQL4__
       double symbolPoint=MarketInfo(symbol, MODE_POINT);
+#else
+      double symbolPoint=SymbolInfoDouble(symbol, SYMBOL_POINT);
+#endif
       
       ArrayInitialize(_zigZagBufferBuy,  0);
       ArrayInitialize(_zigZagBufferSell, 0);

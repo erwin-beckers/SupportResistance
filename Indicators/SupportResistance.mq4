@@ -17,7 +17,11 @@
 #property strict
 #property indicator_chart_window
 
+
 #include <CSupportResistance.mqh>
+
+
+#ifdef __MQL4__
 
 extern bool        SR_1Hours       = false;
 extern bool        SR_4Hours       = false;
@@ -26,12 +30,38 @@ extern bool        SR_Weekly       = true;
 extern bool        ShowAgeLabels   = true;
 extern bool        ShowLastTouch   = false; 
 extern bool        ShowAllSRLines  = false; 
-extern string      __colors__      = "---- S/R settings ----";
-extern color       ColorAge1       = Silver;
+extern string      __colors__      = "---- Colour settings ----";
+extern color       ColorAge1       = clrSilver;
 extern color       ColorAge2       = clrDarkGray;
-extern color       ColorAge3       = LightSeaGreen;
-extern color       ColorAge4       = Teal;
-extern color       ColorText       = Black;
+extern color       ColorAge3       = clrLightSeaGreen;
+extern color       ColorAge4       = clrTeal;
+extern color       ColorText       = clrBlack;
+
+#else
+
+input  bool        i_SR_1Hours      = false;                               // Enable S&R on H1
+input  bool        i_SR_4Hours      = false;                               // Enable S&R on H4
+input  bool        i_SR_Daily       = false;                               // Enable S&R on D1
+input  bool        i_SR_Weekly      = true;                                // Enable S&R on W1
+input  bool        i_ShowAgeLabels  = true;                                // Show Age Labels
+input  bool        i_ShowLastTouch  = false;                               // Show Last Touch
+input  bool        i_ShowAllSRLines = false;                               // Show All S&R Lines
+input  string      __colors__       = "---- Colour settings ----";         // COLOUR SETTINGS
+input  color       ColorAge1        = clrSilver;                           // Colour for Age 1
+input  color       ColorAge2        = clrDarkGray;                         // Colour for Age 2
+input  color       ColorAge3        = clrLightSeaGreen;                    // Colour for Age 3
+input  color       ColorAge4        = clrTeal;                             // Colour for Age 4
+input  color       ColorText        = clrBlack;                            // Colour for Text Labels
+
+bool               SR_1Hours        = i_SR_1Hours;
+bool               SR_4Hours        = i_SR_4Hours;
+bool               SR_Daily         = i_SR_Daily;
+bool               SR_Weekly        = i_SR_Weekly;
+bool               ShowAgeLabels    = i_ShowAgeLabels;
+bool               ShowLastTouch    = i_ShowLastTouch;
+bool               ShowAllSRLines   = i_ShowAllSRLines;
+
+#endif
 
 
 CSupportResistance* _supportResistanceW1;
@@ -39,7 +69,8 @@ CSupportResistance* _supportResistanceD1;
 CSupportResistance* _supportResistanceH4;
 CSupportResistance* _supportResistanceH1;
 
-color        Colors[]     = {Silver,clrDarkGray, LightSeaGreen,Teal};
+
+color        Colors[]     = { clrSilver, clrDarkGray, clrLightSeaGreen, clrTeal };
 
 
 //+------------------------------------------------------------------+
@@ -50,6 +81,7 @@ void ClearAll()
    _supportResistanceH4.ClearAll();
    _supportResistanceH1.ClearAll();
 }
+
 
 //+------------------------------------------------------------------+
 void CalculateSR(bool forceRefresh = false)
@@ -85,20 +117,36 @@ void CalculateSR(bool forceRefresh = false)
    
    switch (SR_Detail)
    {
-      case Minium:     txt += " Minimum";     break;
+      case Minimum:    txt += " Minimum";     break;
       case MediumLow:  txt += " Medium/Low";  break;
       case Medium:     txt += " Medium";      break;
       case MediumHigh: txt += " Medium/High"; break;
       case Maximum:    txt += " Maximum";     break;
    }
    
+#ifdef __MQL4__
    ObjectCreate("@info", OBJ_LABEL, 0, 0, 0);
    ObjectSet("@info", OBJPROP_BACK, false);
    ObjectSet("@info", OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSet("@info", OBJPROP_XDISTANCE, 250);
    ObjectSet("@info", OBJPROP_YDISTANCE, 0);
    ObjectSetText("@info", txt, 8, "Arial", ColorText);
+#else
+   ObjectCreate(ChartID(), "@info", OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(ChartID(), "@info", OBJPROP_BACK, false);
+   ObjectSetInteger(ChartID(), "@info", OBJPROP_CORNER, CORNER_LEFT_LOWER);
+   ObjectSetInteger(ChartID(), "@info", OBJPROP_XDISTANCE, 10);
+   ObjectSetInteger(ChartID(), "@info", OBJPROP_YDISTANCE, 0);
+   
+   ObjectSetString(ChartID(), "@info", OBJPROP_TEXT, txt);
+   ObjectSetString(ChartID(), "@info", OBJPROP_FONT, "Arial");
+   ObjectSetInteger(ChartID(), "@info", OBJPROP_FONTSIZE, 8);
+   ObjectSetInteger(ChartID(), "@info", OBJPROP_COLOR, ColorText);
+   
+   ChartRedraw(ChartID());
+#endif
 }
+
 
 //+------------------------------------------------------------------+
 int OnCalculate(const int rates_total,
@@ -118,7 +166,11 @@ int OnCalculate(const int rates_total,
 
 
 //+------------------------------------------------------------------+
+#ifdef __MQL4__
 void deinit()
+#else
+void OnDeinit(const int reason)
+#endif
 { 
    ClearAll();
    delete _supportResistanceW1;
@@ -127,8 +179,13 @@ void deinit()
    delete _supportResistanceH1;
 }
 
+
 //+------------------------------------------------------------------+
+#ifdef __MQL4__
 int init()
+#else
+int OnInit()
+#endif
 {  
    Colors[0] = ColorAge1;
    Colors[1] = ColorAge2;
@@ -143,6 +200,7 @@ int init()
    CalculateSR(true);
    return(INIT_SUCCEEDED);
 }
+
 
 //+------------------------------------------------------------------+
 void OnChartEvent(const int id,          // Event ID
@@ -160,8 +218,8 @@ void OnChartEvent(const int id,          // Event ID
       switch(lparam)
       {
          case 49://1
-            Print("Detail: Minium");
-            SR_Detail = Minium; 
+            Print("Detail: minimum");
+            SR_Detail = Minimum;
             CalculateSR();
          break;
          
